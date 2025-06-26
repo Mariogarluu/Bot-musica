@@ -1,5 +1,6 @@
 // Import necessary functions from Discord Voice API
-const { joinVoiceChannel, createAudioPlayer, createAudioResource, AudioPlayerStatus, getVoiceConnection } = require('@discordjs/voice');
+const { joinVoiceChannel, createAudioPlayer, createAudioResource, AudioPlayerStatus } = require('@discordjs/voice');
+const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, ComponentType } = require('discord.js');
 const ytdl = require('ytdl-core');
 
 // Map to store music queues per guild (server)
@@ -21,13 +22,12 @@ function getQueue(guildId) {
 // Play the next song in the queue
 async function playNext(interaction, queue) {
   if (queue.songs.length === 0) {
-    // No more songs — destroy connection and exit
     queue.playing = false;
     queue.connection.destroy();
     return;
   }
 
-  const song = queue.songs[0]; // Get the first song in the queue
+  const song = queue.songs[0];
   const stream = ytdl(song.url, { filter: 'audioonly', highWaterMark: 1 << 25 });
   const resource = createAudioResource(stream);
   const player = createAudioPlayer();
@@ -38,21 +38,54 @@ async function playNext(interaction, queue) {
   player.play(resource);
   queue.connection.subscribe(player);
 
-  // When the song finishes, remove it and play the next
   player.on(AudioPlayerStatus.Idle, () => {
-    queue.songs.shift();       // Remove the current song
-    playNext(interaction, queue); // Play the next one
-  });
-
-  // In case of error during playback
-  player.on('error', error => {
-    console.error(`❌ Playback error: ${error.message}`);
-    queue.songs.shift(); // Skip song on error
+    queue.songs.shift();
     playNext(interaction, queue);
   });
 
-  // Respond to the user
-  await interaction.followUp({ content: `🎶 Now playing: ${song.title}` });
+  player.on('error', error => {
+    console.error(`❌ Playback error: ${error.message}`);
+    queue.songs.shift();
+    playNext(interaction, queue);
+  });
+
+  // Embed with buttons
+  const embed = new EmbedBuilder()
+    .setColor(0x1DB954)
+    .setTitle('🎶 Now Playing')
+    .setDescription(`[${song.title}](${song.url})`)
+    .setFooter({ text: `Requested by ${interaction.user.username}`, iconURL: interaction.user.displayAvatarURL() });
+
+  const row = new ActionRowBuilder().addComponents(
+    new ButtonBuilder().setCustomId('pause').setLabel('⏸ Pause').setStyle(ButtonStyle.Secondary),
+    new ButtonBuilder().setCustomId('skip').setLabel('⏭ Skip').setStyle(ButtonStyle.Primary),
+    new ButtonBuilder().setCustomId('stop').setLabel('⛔ Stop').setStyle(ButtonStyle.Danger)
+  );
+
+  const message = await interaction.followUp({ embeds: [embed], components: [row] });
+
+  const collector = message.createMessageComponentCollector({ componentType: ComponentType.Button, time: 300000 });
+
+  collector.on('collect', async i => {
+    if (i.user.id !== interaction.user.id) {
+      return i.reply({ content: '❌ These buttons aren\'t for you.', ephemeral: true });
+    }
+
+    if (i.customId === 'pause') {
+      const paused = pause(interaction);
+      await i.reply({ content: paused ? '⏸️ Song paused.' : '❌ No song is playing.', ephemeral: true });
+    } else if (i.customId === 'skip') {
+      const skipped = skip(interaction);
+      await i.reply({ content: skipped ? '⏭ Skipped to next song.' : '❌ Nothing to skip.', ephemeral: true });
+    } else if (i.customId === 'stop') {
+      const stopped = stop(interaction);
+      await i.reply({ content: stopped ? '⛔ Music stopped.' : '❌ Nothing to stop.', ephemeral: true });
+    }
+  });
+
+  collector.on('end', () => {
+    message.edit({ components: [] });
+  });
 }
 
 // Add a song to the queue
@@ -61,7 +94,6 @@ async function addToQueue(interaction, song) {
   const guildId = interaction.guild.id;
   const queue = getQueue(guildId);
 
-  // If the bot is not connected yet, connect
   if (!queue.connection) {
     queue.connection = joinVoiceChannel({
       channelId: voiceChannel.id,
@@ -70,27 +102,30 @@ async function addToQueue(interaction, song) {
     });
   }
 
-  queue.songs.push(song); // Add the song to the queue
+  queue.songs.push(song);
 
-  // If nothing is playing, start playback
   if (!queue.playing) {
     await playNext(interaction, queue);
   } else {
-    await interaction.followUp({ content: `📝 Added to queue: ${song.title}` });
+    const embed = new EmbedBuilder()
+      .setColor(0x00BFFF)
+      .setTitle('📝 Added to Queue')
+      .setDescription(`[${song.title}](${song.url})`)
+      .setFooter({ text: `Requested by ${interaction.user.username}`, iconURL: interaction.user.displayAvatarURL() });
+
+    await interaction.followUp({ embeds: [embed] });
   }
 }
 
-// Skip the current song
 function skip(interaction) {
   const queue = queues.get(interaction.guild.id);
   if (queue && queue.player) {
-    queue.player.stop(true); // Force the player to stop, triggering the next song
+    queue.player.stop(true);
     return true;
   }
   return false;
 }
 
-// Stop the music and clear the queue
 function stop(interaction) {
   const queue = queues.get(interaction.guild.id);
   if (queue) {
@@ -103,7 +138,6 @@ function stop(interaction) {
   return false;
 }
 
-// Pause the current song
 function pause(interaction) {
   const queue = queues.get(interaction.guild.id);
   if (queue && queue.player) {
@@ -112,7 +146,6 @@ function pause(interaction) {
   return false;
 }
 
-// Resume a paused song
 function resume(interaction) {
   const queue = queues.get(interaction.guild.id);
   if (queue && queue.player) {
@@ -121,14 +154,12 @@ function resume(interaction) {
   return false;
 }
 
-// Get a formatted list of songs in the queue
 function getQueueList(interaction) {
   const queue = queues.get(interaction.guild.id);
   if (!queue || queue.songs.length === 0) return null;
   return queue.songs.map((s, i) => `${i + 1}. ${s.title}`).join('\n');
 }
 
-// Export all queue control functions for use in commands
 module.exports = {
   addToQueue,
   skip,
