@@ -1,42 +1,37 @@
 const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
 const { addToQueue } = require('../player');
-const ytdl = require('ytdl-core'); // ¡Faltaba esto, guarra!
 
 module.exports = {
   data: new SlashCommandBuilder()
     .setName('play')
-    .setDescription('🎵 Plays a song from YouTube by URL')
+    .setDescription('🎵 Reproduce una canción de YouTube por URL')
     .addStringOption(option =>
       option.setName('song')
-        .setDescription('The YouTube URL of the song')
+        .setDescription('URL del video de YouTube')
         .setRequired(true)
     ),
 
   async execute(interaction) {
     const songInput = interaction.options.getString('song');
-
     const voiceChannel = interaction.member.voice.channel;
     if (!voiceChannel) {
       return interaction.reply({
-        content: '🚫 You need to join a voice channel first!',
+        content: '🚫 Debes unirte primero a un canal de voz.',
         ephemeral: true,
       });
     }
 
-    let songInfo;
-    try {
-      songInfo = await ytdl.getInfo(songInput);
-    } catch (error) {
-      console.error(`❌ Error fetching song info: ${error}`);
+    // Validación simple (puedes mejorarla)
+    if (!songInput.startsWith("http")) {
       return interaction.reply({
-        content: '❌ Error retrieving the song. Please provide a valid YouTube URL.',
+        content: '❌ Por favor, introduce solo la URL de un video de YouTube.',
         ephemeral: true,
       });
     }
 
     const songData = {
-      title: songInfo.videoDetails.title,
-      url: songInfo.videoDetails.video_url,
+      title: songInput, // Puedes mejorar el título si quieres usando otra librería
+      url: songInput,
     };
 
     await interaction.deferReply();
@@ -44,10 +39,9 @@ module.exports = {
 
     const embed = new EmbedBuilder()
       .setColor(0x1DB954)
-      .setTitle('🎶 Added to Queue')
-      .setDescription(`**[${songData.title}](${songData.url})**`)
-      .setThumbnail(songInfo.videoDetails.thumbnails[0].url)
-      .setFooter({ text: `Requested by ${interaction.user.username}`, iconURL: interaction.user.displayAvatarURL() });
+      .setTitle('🎶 Añadida a la cola')
+      .setDescription(`[${songInput}](${songInput})`)
+      .setFooter({ text: `Pedido por ${interaction.user.username}`, iconURL: interaction.user.displayAvatarURL() });
 
     await interaction.editReply({ embeds: [embed] });
   }

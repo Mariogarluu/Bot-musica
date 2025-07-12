@@ -1,23 +1,16 @@
-const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
-const { skip } = require('../player');
+const { SlashCommandBuilder } = require('discord.js');
+const { skipSong } = require('../player');
 
 module.exports = {
   data: new SlashCommandBuilder()
     .setName('skip')
-    .setDescription('⏭ Skips the current song and plays the next one in the queue'),
-
+    .setDescription('⏭️ Salta la canción actual'),
   async execute(interaction) {
-    await interaction.deferReply();
-
-    const result = skip(interaction);
-
-    const embed = new EmbedBuilder()
-      .setColor(result ? 0x0099FF : 0xFF0000)
-      .setTitle(result ? '⏭ Skipped!' : '❌ Cannot Skip')
-      .setDescription(result ? 'Now playing the next song in the queue.' : 'There is no song currently playing to skip.')
-      .setFooter({ text: `Requested by ${interaction.user.username}`, iconURL: interaction.user.displayAvatarURL() })
-      .setTimestamp();
-
-    await interaction.editReply({ embeds: [embed] });
-  },
+    const result = await skipSong(interaction);
+    if (result) {
+      await interaction.reply('⏭️ Canción saltada.');
+    } else {
+      await interaction.reply({ content: '❌ No se puede saltar.', ephemeral: true });
+    }
+  }
 };

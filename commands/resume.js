@@ -1,30 +1,16 @@
-const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
-const { resume } = require('../player');
+const { SlashCommandBuilder } = require('discord.js');
+const { resumePlayer } = require('../player');
 
 module.exports = {
   data: new SlashCommandBuilder()
     .setName('resume')
-    .setDescription('▶️ Resumes a paused song'),
-
+    .setDescription('▶️ Continúa la música pausada'),
   async execute(interaction) {
-    const success = resume(interaction);
-
-    if (success) {
-      const embed = new EmbedBuilder()
-        .setColor(0x00FF7F)
-        .setTitle('▶️ Playback Resumed')
-        .setDescription('The music is now playing again.')
-        .setTimestamp();
-
-      await interaction.reply({ embeds: [embed] });
+    const result = await resumePlayer(interaction);
+    if (result) {
+      await interaction.reply('▶️ Música reanudada.');
     } else {
-      const errorEmbed = new EmbedBuilder()
-        .setColor(0xFF0000)
-        .setTitle('❌ Nothing to Resume')
-        .setDescription('There is no paused track to resume.')
-        .setTimestamp();
-
-      await interaction.reply({ embeds: [errorEmbed], ephemeral: true });
+      await interaction.reply({ content: '❌ No hay música pausada.', ephemeral: true });
     }
   }
 };
