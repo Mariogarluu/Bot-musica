@@ -1,53 +1,142 @@
-// Load environment variables from .env file
 require('dotenv').config();
-
-const { Client, GatewayIntentBits, Collection } = require('discord.js');
+const { Client, GatewayIntentBits, Collection, EmbedBuilder } = require('discord.js');
+const { pausePlayer, resumePlayer, skipSong, stopPlayer, getQueue, setQueue, addToQueue } = require('./player');
+const { getReproductorEmbed } = require('./utils/reproductorEmbed');
+const { sendOrUpdateReproductor } = require('./utils/reproductorMessage');
 const fs = require('fs');
 
-// Create a new Discord client with specific intents (permissions)
 const client = new Client({
     intents: [
-        GatewayIntentBits.Guilds,              // Allows bot to access basic guild info
-        GatewayIntentBits.GuildMessages,       // Allows bot to read messages
-        GatewayIntentBits.MessageContent,      // Allows bot to read message content
-        GatewayIntentBits.GuildVoiceStates,    // Allows bot to access voice channel state
+        GatewayIntentBits.Guilds,
+        GatewayIntentBits.GuildMessages,
+        GatewayIntentBits.MessageContent,
+        GatewayIntentBits.GuildVoiceStates,
     ],
 });
 
-// Create a collection to store all slash commands
 client.commands = new Collection();
-
-// Load all command files from the /commands directory
 const commandFiles = fs.readdirSync('./commands').filter(file => file.endsWith('.js'));
-
 for (const file of commandFiles) {
     const command = require(`./commands/${file}`);
-    client.commands.set(command.data.name, command); // Add each command to the collection
+    client.commands.set(command.data.name, command);
 }
 
-// Event: Bot is ready
 client.once('ready', () => {
     console.log(`Logged in as ${client.user.tag}!`);
 });
 
-// Event: Slash command interaction received
 client.on('interactionCreate', async interaction => {
+    if (interaction.isButton()) {
+        const guildId = interaction.guildId;
+        const queue = getQueue(guildId);
+
+        // SIEMPRE: asegúrate de deferReply si aún no está respondida la interacción
+        if (!interaction.deferred && !interaction.replied) {
+            await interaction.deferReply({ ephemeral: false });
+        }
+
+        // Lógica de cada botón
+        let updated = false;
+        switch (interaction.customId) {
+            case 'pause':
+                await pausePlayer(interaction);
+                updated = true;
+                break;
+            case 'resume':
+                await resumePlayer(interaction);
+                updated = true;
+                break;
+            case 'skip':
+                await skipSong(interaction);
+                updated = true;
+                break;
+            case 'shuffle':
+                if (queue && queue.length > 1) {
+                    const [current, ...rest] = queue;
+                    for (let i = rest.length - 1; i > 0; i--) {
+                        const j = Math.floor(Math.random() * (i + 1));
+                        [rest[i], rest[j]] = [rest[j], rest[i]];
+                    }
+                    setQueue(guildId, [current, ...rest]);
+                }
+                updated = true;
+                break;
+            case 'stop':
+                await stopPlayer(interaction);
+                updated = true;
+                break;
+            case 'queue': {
+                // Muestra solo la cola (no el reproductor)
+                if (!queue || queue.length === 0) {
+                    return interaction.followUp({ content: '🚫 La cola está vacía.', ephemeral: true });
+                }
+                let desc = '';
+                queue.forEach((song, i) => {
+                    desc += `**${i + 1}.** [${song.title}](${song.url})\n`;
+                });
+                const embed = new EmbedBuilder()
+                    .setTitle('📋 Cola actual')
+                    .setDescription(desc.length < 4096 ? desc : desc.substring(0, 4093) + "...")
+                    .setColor(0x1DB954);
+                return interaction.followUp({ embeds: [embed], ephemeral: true });
+            }
+        }
+
+        // Si la acción requiere refrescar el reproductor:
+        if (updated) {
+            const updatedQueue = getQueue(guildId);
+            if (updatedQueue && updatedQueue[0]) {
+                const { embed, buttons } = getReproductorEmbed(updatedQueue[0], interaction, updatedQueue);
+                await sendOrUpdateReproductor(guildId, interaction, updatedQueue[0], updatedQueue, embed, buttons);
+            } else {
+                // Puedes borrar el mensaje del reproductor si la cola está vacía
+            }
+        }
+        return;
+    }
+
+    // --- Botón de play desde search ---
+    if (interaction.isButton() && interaction.customId.startsWith('search_play_')) {
+        const videoId = interaction.customId.replace('search_play_', '');
+        const url = `https://www.youtube.com/watch?v=${videoId}`;
+
+        const voiceChannel = interaction.member.voice.channel;
+        if (!voiceChannel) {
+            return interaction.reply({
+                content: '🚫 Debes unirte primero a un canal de voz.',
+                ephemeral: true,
+            });
+        }
+
+        const yts = require('yt-search');
+        const info = await yts({ videoId });
+        const title = info && info.title ? info.title : url;
+
+        await addToQueue(interaction, { title, url });
+
+        // Refresca el reproductor
+        const queue = getQueue(interaction.guildId);
+        const { embed, buttons } = getReproductorEmbed({ title, url }, interaction, queue);
+        await sendOrUpdateReproductor(interaction.guildId, interaction, { title, url }, queue, embed, buttons);
+        return;
+    }
+
+    // Slash commands
     if (!interaction.isCommand()) return;
-
-    const command = client.commands.get(interaction.commandName); // Get the matching command
-
+    const command = client.commands.get(interaction.commandName);
     if (!command) return;
-
     try {
-        await command.execute(interaction); // Run the command logic
+        await command.execute(interaction);
     } catch (error) {
         console.error(error);
-        // Reply with error message (ephemeral = only visible to user)
-        await interaction.reply({ content: 'There was an error while executing this command!', ephemeral: true });
+        if (interaction.deferred || interaction.replied) {
+            await interaction.editReply('❌ Hubo un error al ejecutar el comando.');
+        } else {
+            await interaction.reply({ content: '❌ Hubo un error al ejecutar el comando.', ephemeral: true });
+        }
     }
 });
 
-// Log in to Discord using the bot token from .env
 client.login(process.env.DISCORD_TOKEN)
     .then(() => console.log('Bot is online!'))
     .catch(console.error);

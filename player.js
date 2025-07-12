@@ -1,6 +1,8 @@
 // player.js
 const { joinVoiceChannel, createAudioPlayer, createAudioResource, AudioPlayerStatus, getVoiceConnection } = require('@discordjs/voice');
 const ytdl = require('@distube/ytdl-core');
+const { getReproductorEmbed } = require('./utils/reproductorEmbed');
+const { sendOrUpdateReproductor, clearReproductorMessage } = require('./utils/reproductorMessage');
 
 const queues = new Map();
 const players = new Map();
@@ -8,15 +10,12 @@ const players = new Map();
 function getQueue(guildId) {
   return queues.get(guildId) || [];
 }
-
 function setQueue(guildId, queue) {
   queues.set(guildId, queue);
 }
-
 function getPlayer(guildId) {
   return players.get(guildId);
 }
-
 function setPlayer(guildId, player) {
   players.set(guildId, player);
 }
@@ -26,7 +25,6 @@ async function addToQueue(interaction, song) {
   let queue = getQueue(guildId);
   queue.push(song);
   setQueue(guildId, queue);
-
   if (queue.length === 1) {
     await playSong(interaction, song);
   }
@@ -64,6 +62,7 @@ async function playSong(interaction, song) {
       playSong(interaction, queue[0]);
     } else if (connection) {
       connection.destroy();
+      clearReproductorMessage(guildId);
     }
     return;
   }
@@ -79,15 +78,21 @@ async function playSong(interaction, song) {
   player.play(resource);
   connection.subscribe(player);
 
-  player.on(AudioPlayerStatus.Idle, () => {
+  // ⚡ Cada vez que cambia la canción, refresca el reproductor
+  const queue = getQueue(guildId);
+  const { embed, buttons } = getReproductorEmbed(song, interaction, queue);
+  await sendOrUpdateReproductor(guildId, interaction, song, queue, embed, buttons);
+
+  player.on(AudioPlayerStatus.Idle, async () => {
     let queue = getQueue(guildId);
     queue.shift();
     setQueue(guildId, queue);
 
     if (queue.length > 0 && queue[0] && queue[0].url) {
-      playSong(interaction, queue[0]);
+      await playSong(interaction, queue[0]);
     } else {
       if (connection) connection.destroy();
+      clearReproductorMessage(guildId);
     }
   });
 
@@ -96,45 +101,41 @@ async function playSong(interaction, song) {
   });
 }
 
-async function pausePlayer(interaction) {
-  const guildId = interaction.guildId;
-  const player = getPlayer(guildId);
-  if (!player) return false;
-  player.pause();
-  return true;
-}
-
-async function resumePlayer(interaction) {
-  const guildId = interaction.guildId;
-  const player = getPlayer(guildId);
-  if (!player) return false;
-  player.unpause();
-  return true;
-}
-
-async function skipSong(interaction) {
-  const guildId = interaction.guildId;
-  const player = getPlayer(guildId);
-  if (!player) return false;
-  player.stop();
-  return true;
-}
-
-async function stopPlayer(interaction) {
-  const guildId = interaction.guildId;
-  const player = getPlayer(guildId);
-  const connection = getVoiceConnection(guildId);
-  setQueue(guildId, []);
-  if (player) player.stop();
-  if (connection) connection.destroy();
-  return true;
-}
+// Las demás funciones igual (pause, resume, skip, stop...)
 
 module.exports = {
   addToQueue,
   getQueue,
-  pausePlayer,
-  resumePlayer,
-  skipSong,
-  stopPlayer,
+  setQueue,
+  pausePlayer: async (interaction) => {
+    const guildId = interaction.guildId;
+    const player = getPlayer(guildId);
+    if (!player) return false;
+    player.pause();
+    return true;
+  },
+  resumePlayer: async (interaction) => {
+    const guildId = interaction.guildId;
+    const player = getPlayer(guildId);
+    if (!player) return false;
+    player.unpause();
+    return true;
+  },
+  skipSong: async (interaction) => {
+    const guildId = interaction.guildId;
+    const player = getPlayer(guildId);
+    if (!player) return false;
+    player.stop();
+    return true;
+  },
+  stopPlayer: async (interaction) => {
+    const guildId = interaction.guildId;
+    const player = getPlayer(guildId);
+    const connection = getVoiceConnection(guildId);
+    setQueue(guildId, []);
+    if (player) player.stop();
+    if (connection) connection.destroy();
+    clearReproductorMessage(guildId);
+    return true;
+  }
 };
