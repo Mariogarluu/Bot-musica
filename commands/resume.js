@@ -4,13 +4,9 @@ const { resumePlayer } = require('../player');
 module.exports = {
   data: new SlashCommandBuilder()
     .setName('resume')
-    .setDescription('▶️ Continúa la música pausada'),
+    .setDescription('▶️ Reanuda la reproducción'),
   async execute(interaction) {
-    const result = await resumePlayer(interaction);
-    if (result) {
-      await interaction.reply('▶️ Música reanudada.');
-    } else {
-      await interaction.reply({ content: '❌ No hay música pausada.', ephemeral: true });
-    }
+    await resumePlayer(interaction);
+    return interaction.reply({ content: '▶️ Reanudado', ephemeral: true });
   }
 };

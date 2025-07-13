@@ -1,4 +1,3 @@
-// commands/search.js
 const { SlashCommandBuilder, EmbedBuilder, ButtonBuilder, ActionRowBuilder, ButtonStyle } = require('discord.js');
 const yts = require('yt-search');
 
@@ -20,10 +19,9 @@ module.exports = {
       return interaction.editReply('❌ No encontré resultados en YouTube.');
     }
 
-    // Escoge los primeros 5 resultados
+    // Solo 5 primeros resultados
     const results = res.videos.slice(0, 5);
 
-    // Genera el listado numerado
     let desc = '';
     results.forEach((v, i) => {
       desc += `**${i + 1}.** [${v.title}](${v.url}) (${v.timestamp})\n`;
@@ -35,7 +33,7 @@ module.exports = {
       .setColor(0xff0000)
       .setFooter({ text: `Pedido por ${interaction.user.username}`, iconURL: interaction.user.displayAvatarURL() });
 
-    // Un botón por cada resultado
+    // Botón de reproducir para cada resultado
     const row = new ActionRowBuilder();
     results.forEach((v, i) => {
       row.addComponents(
@@ -45,10 +43,6 @@ module.exports = {
           .setStyle(ButtonStyle.Primary)
       );
     });
-
-    // Guarda los resultados en memoria para este usuario (usando el objeto global, o puedes usar una DB ligera)
-    interaction.client.searchResults ??= {};
-    interaction.client.searchResults[interaction.user.id] = results;
 
     await interaction.editReply({ embeds: [embed], components: [row] });
   }

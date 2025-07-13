@@ -4,13 +4,9 @@ const { pausePlayer } = require('../player');
 module.exports = {
   data: new SlashCommandBuilder()
     .setName('pause')
-    .setDescription('⏸️ Pausa la canción actual'),
+    .setDescription('⏸️ Pausa la reproducción'),
   async execute(interaction) {
-    const result = await pausePlayer(interaction);
-    if (result) {
-      await interaction.reply('⏸️ Música pausada.');
-    } else {
-      await interaction.reply({ content: '❌ No se está reproduciendo nada.', ephemeral: true });
-    }
+    await pausePlayer(interaction);
+    return interaction.reply({ content: '⏸️ Pausado', ephemeral: true });
   }
 };
