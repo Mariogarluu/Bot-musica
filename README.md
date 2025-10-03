@@ -214,3 +214,9 @@ Las contribuciones son bienvenidas. Si encuentras algún bug o tienes alguna sug
 - El archivo `.env` nunca debe compartirse públicamente
 
 ## 👨‍💻 Autor
+
+Mariogarluu
+
+---
+
+¿Necesitas ayuda? Abre un [issue](https://github.com/Mariogarluu/Bot-musica/issues) en GitHub.
