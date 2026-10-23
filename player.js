@@ -13,7 +13,7 @@ const {
 const { spawn } = require('child_process');
 const ffmpegPath = require('ffmpeg-static');
 const { PassThrough } = require('stream');
-const googleTTS = require('google-tts-api');
+const { synthesizeSpeech, getGuildVoice } = require('./utils/ttsProvider');
 
 const { Ytdl, Quality } = require('@distube/ytdl-core');
 const yts = require('yt-search');
@@ -144,23 +144,10 @@ function generateDjPhrase(song) {
   return phrase.length > 195 ? phrase.substring(0, 192) + '...' : phrase;
 }
 
-async function getTtsAudioResource(text) {
-  const url = googleTTS.getAudioUrl(text, {
-    lang: 'es',
-    slow: false,
-    host: 'https://translate.google.com',
-  });
-
-  const res = await fetch(url, { signal: AbortSignal.timeout(5000) });
-  if (!res.ok) {
-    throw new Error(`Google TTS status ${res.status}: ${res.statusText}`);
-  }
-
-  const arrayBuffer = await res.arrayBuffer();
-  const buffer = Buffer.from(arrayBuffer);
-  const pt = new PassThrough();
-  pt.end(buffer);
-  return createAudioResource(pt);
+async function getTtsAudioResource(text, guildId = null) {
+  const voiceId = guildId ? getGuildVoice(guildId) : undefined;
+  const result = await synthesizeSpeech(text, voiceId);
+  return result?.resource || result;
 }
 
 function isPaused(guildId) {
@@ -466,7 +453,7 @@ async function playSong(interaction, song, seekSeconds = 0) {
     try {
       const phrase = generateDjPhrase(song);
       console.log(`[DJ Locutor - Guild ${guildId}]: "${phrase}"`);
-      ttsResource = await getTtsAudioResource(phrase);
+      ttsResource = await getTtsAudioResource(phrase, guildId);
     } catch (ttsErr) {
       console.warn('[DJ Locutor] Error de red o servicio obteniendo locución TTS, procediendo con la canción:', ttsErr?.message || ttsErr);
       ttsResource = null;
@@ -653,11 +640,11 @@ function stopSoundEffect(guildId) {
 }
 
 /**
- * Reproduce un efecto de sonido efímero en el canal de voz.
- * Si hay música sonando, la pausa momentáneamente y la restaura automáticamente tras sonar el clip.
- * Maneja el spam de botones sin fallos de interacción ni condiciones de carrera.
+ * Reproduce un recurso de audio efímero (Soundboard, TTS, Muestras de Voz) en el canal de voz.
+ * Si hay música sonando, la pausa momentáneamente y la restaura automáticamente al finalizar.
+ * Maneja llamadas concurrentes mediante un sistema atómico de tokens para evitar condiciones de carrera.
  */
-async function playSoundEffect(guildId, voiceChannel, soundData) {
+async function playEphemeralResource(guildId, voiceChannel, resource, maxDurationMs = 15_000) {
   if (!voiceChannel) return false;
 
   cancelIdleDisconnect(guildId);
@@ -673,7 +660,7 @@ async function playSoundEffect(guildId, voiceChannel, soundData) {
     });
 
     connection.on('stateChange', (oldState, newState) => {
-      console.log(`[VOICE STATE (Soundboard)]: ${oldState.status} -> ${newState.status}`);
+      console.log(`[VOICE STATE (Ephemeral)]: ${oldState.status} -> ${newState.status}`);
     });
 
     connection.on(VoiceConnectionStatus.Disconnected, async () => {
@@ -688,7 +675,7 @@ async function playSoundEffect(guildId, voiceChannel, soundData) {
     });
 
     connection.on('error', (err) => {
-      console.error('[VOICE ERROR (Soundboard)]:', err?.message || err);
+      console.error('[VOICE ERROR (Ephemeral)]:', err?.message || err);
     });
   } else if (connection.joinConfig?.channelId !== voiceChannel.id) {
     const queue = getQueue(guildId);
@@ -705,7 +692,7 @@ async function playSoundEffect(guildId, voiceChannel, soundData) {
     try {
       await entersState(connection, VoiceConnectionStatus.Ready, 15_000);
     } catch (err) {
-      console.error('[SOUNDBOARD] No se pudo conectar a voz (timeout):', err?.message || err);
+      console.error('[EPHEMERAL AUDIO] No se pudo conectar a voz (timeout):', err?.message || err);
       return false;
     }
   }
@@ -714,7 +701,7 @@ async function playSoundEffect(guildId, voiceChannel, soundData) {
   const queue = getQueue(guildId);
   const hadMusicPlaying = musicPlayer && musicPlayer.state.status === AudioPlayerStatus.Playing;
 
-  // Si ya existía una sesión de soundboard activa (spam continuo), preservamos el estado inicial de música
+  // Si ya existía una sesión efímera activa, preservamos el estado inicial de música
   const existingSession = soundEffectSessions.get(guildId);
   const wasPlayingMusic = existingSession ? existingSession.wasPlayingMusic : hadMusicPlaying;
 
@@ -727,7 +714,7 @@ async function playSoundEffect(guildId, voiceChannel, soundData) {
     musicPlayer.pause(true);
   }
 
-  // Crear o recuperar el reproductor de efectos de sonido
+  // Crear o recuperar el reproductor efímero
   let soundPlayer = soundPlayers.get(guildId);
   if (!soundPlayer) {
     soundPlayer = createAudioPlayer();
@@ -735,12 +722,9 @@ async function playSoundEffect(guildId, voiceChannel, soundData) {
   }
   soundPlayer.removeAllListeners();
 
-  // Generar token único para manejar spam de botones de forma atómica
+  // Generar token único para manejar múltiples ejecuciones concurrentes de forma atómica
   const token = (existingSession ? existingSession.token : 0) + 1;
 
-  // Obtener recurso de audio
-  const audioSource = getSoundPathOrUrl(soundData);
-  const resource = createAudioResource(audioSource, { inlineVolume: true });
   if (resource.volume) {
     resource.volume.setVolume(1.0);
   }
@@ -756,7 +740,7 @@ async function playSoundEffect(guildId, voiceChannel, soundData) {
   const cleanupAndRestore = () => {
     const currentSession = soundEffectSessions.get(guildId);
     if (!currentSession || currentSession.token !== token) {
-      return; // Un nuevo sonido fue lanzado durante la reproducción
+      return; // Otro audio efímero fue lanzado durante la reproducción
     }
 
     if (currentSession.timeoutId) {
@@ -775,7 +759,7 @@ async function playSoundEffect(guildId, voiceChannel, soundData) {
     const currentQueue = getQueue(guildId);
 
     if (currentSession.wasPlayingMusic && currentMusicPlayer && currentQueue.length > 0) {
-      // Reanudar música donde se dejó
+      // Reanudar música exactamente donde se pausó
       activeConn.subscribe(currentMusicPlayer);
       currentMusicPlayer.unpause();
     } else if (currentMusicPlayer && currentQueue.length > 0) {
@@ -787,17 +771,17 @@ async function playSoundEffect(guildId, voiceChannel, soundData) {
     }
   };
 
-  // Fallback de seguridad: 8 segundos máximo por clip
+  // Timeout de seguridad estricto
   sessionData.timeoutId = setTimeout(() => {
     cleanupAndRestore();
-  }, 8_000);
+  }, maxDurationMs);
 
   soundPlayer.on(AudioPlayerStatus.Idle, () => {
     cleanupAndRestore();
   });
 
   soundPlayer.on('error', (err) => {
-    console.error('[SOUND PLAYER ERROR]:', err?.message || err);
+    console.error('[EPHEMERAL AUDIO ERROR]:', err?.message || err);
     cleanupAndRestore();
   });
 
@@ -805,6 +789,31 @@ async function playSoundEffect(guildId, voiceChannel, soundData) {
   soundPlayer.play(resource);
 
   return true;
+}
+
+/**
+ * Reproduce un efecto de sonido efímero en el canal de voz.
+ */
+async function playSoundEffect(guildId, voiceChannel, soundData) {
+  if (!voiceChannel) return false;
+  const audioSource = getSoundPathOrUrl(soundData);
+  const resource = createAudioResource(audioSource, { inlineVolume: true });
+  return playEphemeralResource(guildId, voiceChannel, resource, 8_000);
+}
+
+/**
+ * Sintetiza y reproduce un mensaje Text-To-Speech en el canal de voz de forma efímera e inteligente.
+ * Pausa la música actual y la reanuda automáticamente al concluir la locución.
+ */
+async function playTtsSpeech(guildId, voiceChannel, text, voiceId = null) {
+  if (!voiceChannel) return false;
+  const targetVoice = voiceId || getGuildVoice(guildId);
+  const result = await synthesizeSpeech(text, targetVoice);
+  const resource = result?.resource || result;
+  // Cálculo de timeout de seguridad dinámico (base 10s + 80ms por carácter, máx 45s)
+  const durationMs = Math.min(45_000, Math.max(10_000, 10_000 + (String(text).length * 80)));
+  const played = await playEphemeralResource(guildId, voiceChannel, resource, durationMs);
+  return { played, voice: result?.voice, fallback: result?.fallback };
 }
 
 /* -------------------- Controles y Exportaciones -------------------- */
@@ -826,6 +835,9 @@ module.exports = {
   setDjMode,
   toggleDjMode,
   generateDjPhrase,
+  getTtsAudioResource,
+  playTtsSpeech,
+  playEphemeralResource,
 
   // Filtros FFmpeg
   FILTERS,

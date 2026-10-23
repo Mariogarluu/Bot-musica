@@ -220,6 +220,8 @@ Todos los comandos se ejecutan mediante las interacciones nativas **Slash Comman
 | `/play` | `song` *(requerido)* | Reproduce una pista o playlist de **YouTube** o **Spotify**, o busca por texto | `/play song: Bohemian Rhapsody`<br>`/play song: https://open.spotify.com/playlist/...`<br>`/play song: https://youtu.be/...` |
 | `/filter` | `tipo` *(requerido)* | Aplica filtros de audio en tiempo real con FFmpeg (**nightcore**, **vaporwave**, **bassboost**, **8d**, **radio**, **off**) | `/filter tipo: ⚡ Nightcore`<br>`/filter tipo: 🌊 Vaporwave`<br>`/filter tipo: ❌ Desactivar / Off` |
 | `/dj` | `estado` *(opcional: true/false)* | Activa o desactiva el **Modo Locutor DJ** (TTS en español) que presenta canciones con estilo de radio | `/dj`<br>`/dj estado: True`<br>`/dj estado: False` |
+| `/voice` | `eleccion` *(opcional)* | Abre el selector interactivo o configura la **voz neuronal de IA** del servidor (Álvaro, Elvira, Jorge, Dalia, Tomás, Elena, Gonzalo, Salomé, Guy, Aria) | `/voice`<br>`/voice eleccion: 🇲🇽 Jorge` |
+| `/tts` | `mensaje` *(requerido)* | Lee en voz alta un texto en tu canal de voz con la **voz de IA** activa del servidor | `/tts mensaje: Hola a todos los presentes` |
 | `/ambient` | *Ninguno* | Abre el **menú interactivo de audio ambiental en bucle** (Focus / Study Mode) | `/ambient` |
 | `/search` | `query` *(requerido)* | Busca los mejores resultados en YouTube y abre un **menú interactivo** para elegir | `/search query: Imagine Dragons Bones` |
 | `/lyrics` | `cancion` *(opcional)* | Muestra la letra de la canción actual o de la que busques con **paginación interactiva** | `/lyrics`<br>`/lyrics cancion: Coldplay - Viva La Vida` |
@@ -230,7 +232,10 @@ Todos los comandos se ejecutan mediante las interacciones nativas **Slash Comman
 | `/shuffle` | *Ninguno* | Reordena aleatoriamente todas las canciones en espera de la cola | `/shuffle` |
 | `/stop` | *Ninguno* | Detiene la música, vacía la lista y desconecta el bot del canal de voz | `/stop` |
 | `/ruleta` | `castigo` *(opcional: mute, susto)* | Inicia la **Ruleta Rusa de voz** (animación en 3 pasos, riesgo 1/6, mute temporal o susto) | `/ruleta`<br>`/ruleta castigo: 🔇 Mute`<br>`/ruleta castigo: 👻 Susto` |
-| `/soundboard` | *Ninguno* | Abre la **botonera interactiva de efectos de sonido y memes** (Bocina de meme, Ba-dum tss, Aplausos, Grillos, Bruh, Fail y control de silenciado con pausa inteligente de música) | `/soundboard` |
+| `/soundboard` | *Ninguno* | Abre la **botonera interactiva de efectos de sonido y memes** con paginación, pausa inteligente de música y botón `➕ Añadir` | `/soundboard` |
+| `/soundboard-add` | `nombre`, `archivo` *(opc)*, `url` *(opc)*, `emoji` *(opc)*, `color` *(opc)* | **Añade un sonido al soundboard** arrastrando un archivo de audio directamente a Discord o indicando una URL, con vista previa | `/soundboard-add nombre: Taco Bell emoji: 🔔`<br>`/soundboard-add nombre: GigaChad archivo: [audio.mp3]` |
+| `/soundboard-remove` | *Ninguno* | Abre un **menú interactivo para borrar** sonidos personalizados del bot | `/soundboard-remove` |
+| `/soundboard-web` | *Ninguno* | Abre el enlace al **Soundboard Studio Web** (`http://localhost:3000/soundboard`) con Drag & Drop y vista previa en tiempo real | `/soundboard-web` |
 | `/help` | `categoria` *(opcional)* | Abre el manual interactivo categorizado del bot | `/help`<br>`/help categoria: 🎵 Comandos de Música` |
 
 ---
@@ -338,15 +343,23 @@ Bot-musica/
 │   ├── search.js              # Búsqueda en YouTube con menú desplegable
 │   ├── shuffle.js             # Mezclador aleatorio de cola
 │   ├── skip.js                # Salto de pistas
+│   ├── soundboard-add.js      # Añadir sonidos al soundboard (archivo o URL)
+│   ├── soundboard-remove.js   # Borrar sonidos personalizados
+│   ├── soundboard-web.js      # Acceso al estudio web de soundboard
 │   ├── soundboard.js          # Botonera interactiva de memes y efectos de sonido
-│   └── stop.js                # Detención, vaciado y desconexión
+│   ├── stop.js                # Detención, vaciado y desconexión
+│   ├── tts.js                 # Locución Text-to-Speech con voces de IA
+│   └── voice.js               # Selector de voces neuronales de IA
+├── data/                      # Persistencia de sonidos personalizados
 ├── utils/                     # Utilidades y generadores de UI
 │   ├── ambientStreams.js      # Presets de audio relajante en bucle
 │   ├── helpEmbed.js           # Generación de embeds y menús de ayuda
 │   ├── queueEmbed.js          # Formateador de colas paginadas y botones
 │   ├── reproductorEmbed.js    # Embed reactivo del reproductor de audio
 │   ├── reproductorMessage.js  # Gestor de actualización in-place (anti-spam)
-│   └── soundEffects.js        # Catálogo de sonidos y mapeo para soundboard
+│   ├── soundEffects.js        # Catálogo de sonidos y mapeo para soundboard
+│   ├── soundboardWeb.js       # Interfaz web y API REST para soundboard
+│   └── ttsProvider.js         # Motor neuronal de voces de IA y fallback
 ├── .env.example               # Plantilla de variables de entorno
 ├── deploy-commands.js         # Script de registro de comandos Slash en Discord REST
 ├── index.js                   # Punto de entrada, listeners, servidor HTTP y presencia

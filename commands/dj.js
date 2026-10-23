@@ -1,6 +1,7 @@
 // commands/dj.js
 const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
 const { getDjMode, setDjMode, toggleDjMode } = require('../player');
+const { getGuildVoice, getVoiceById } = require('../utils/ttsProvider');
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -24,12 +25,14 @@ module.exports = {
       isEnabled = toggleDjMode(guildId);
     }
 
+    const activeVoice = getVoiceById(getGuildVoice(guildId));
+
     const embed = new EmbedBuilder()
       .setColor(isEnabled ? 0x1DB954 : 0xEF4444)
       .setTitle(isEnabled ? '🎙️ Modo Locutor DJ: Activado' : '🔇 Modo Locutor DJ: Desactivado')
       .setDescription(
         isEnabled
-          ? '¡El **Locutor DJ** está encendido! A partir de ahora, cada canción será presentada con estilo de radio antes de comenzar a reproducirse.'
+          ? `¡El **Locutor DJ** está encendido! A partir de ahora, cada canción será presentada con estilo de radio antes de comenzar a reproducirse utilizando la voz activa de **${activeVoice.name}**.`
           : 'El **Locutor DJ** ha sido desactivado. Las pistas comenzarán a sonar directamente sin locución previa.'
       )
       .addFields(
@@ -39,14 +42,14 @@ module.exports = {
           inline: true
         },
         {
-          name: '🗣️ Locución',
-          value: '`Español (es) • Google TTS`',
+          name: '🗣️ Locución Neuronal',
+          value: `\`${activeVoice.emoji} ${activeVoice.name} (${activeVoice.country})\``,
           inline: true
         }
       )
       .setFooter({
         text: isEnabled
-          ? 'Usa /dj estado: False para apagar el locutor cuando quieras'
+          ? 'Cambia la voz del locutor con /voice • Usa /dj estado: False para apagarlo'
           : 'Usa /dj para volver a activar el locutor',
         iconURL: interaction.user.displayAvatarURL()
       })

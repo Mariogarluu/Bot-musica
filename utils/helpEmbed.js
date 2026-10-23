@@ -45,7 +45,15 @@ function getHelpData(client, category = 'overview', user = null) {
           },
           {
             name: '🎙️ `/dj [estado]`',
-            value: 'Activa o desactiva el **Modo Locutor DJ** (TTS en español). El bot presenta cada canción antes de reproducirse con estilo de radio.'
+            value: 'Activa o desactiva el **Modo Locutor DJ** (TTS neuronal con la voz elegida en `/voice`). El bot presenta cada canción antes de reproducirse con estilo de radio.'
+          },
+          {
+            name: '🗣️ `/voice [eleccion]`',
+            value: 'Configura la **voz neuronal de IA** para el servidor (8 voces de España 🇪🇸, México 🇲🇽, Argentina 🇦🇷 y Colombia 🇨🇴). Si se ejecuta sin parámetros, abre un menú interactivo y reproduce una muestra de audio en llamada.'
+          },
+          {
+            name: '📢 `/tts <mensaje>`',
+            value: 'Lee en voz alta tu mensaje en el canal de voz usando Inteligencia Artificial. Si hay música sonando, **se pausa momentáneamente y se reanuda sola** al terminar el mensaje.'
           },
           {
             name: '⏹️ `/stop`',
@@ -77,11 +85,23 @@ function getHelpData(client, category = 'overview', user = null) {
       embed
         .setColor(0xEF4444)
         .setTitle('🎲 Dinámicas de Servidor, Minijuegos & Soundboard')
-        .setDescription('Herramientas interactivas y efectos divertidos diseñados para canales de voz:')
+        .setDescription('Herramientas interactivas, efectos y soundboard diseñados para llamadas de voz:')
         .addFields(
           {
             name: '🔊 `/soundboard`',
-            value: 'Despliega la **botonera interactiva de memes y efectos de sonido** (`Bocina de meme`, `Ba-dum tss`, `Aplausos`, `Grillos`, `Bruh`, `Sad Violin / Fail` y más). Pausa momentáneamente la música si está sonando y la reanuda de forma automática tras terminar el clip.'
+            value: 'Despliega la **botonera interactiva de memes y efectos** con paginación, pausa inteligente de música y botón `➕ Añadir`.'
+          },
+          {
+            name: '➕ `/soundboard-add`',
+            value: 'Añade un sonido personalizado subiendo un **archivo MP3/WAV arrastrado** o una URL directa, con emoji y color a tu elección.'
+          },
+          {
+            name: '🗑️ `/soundboard-remove`',
+            value: 'Abre un **menú interactivo** para seleccionar y eliminar sonidos personalizados del bot.'
+          },
+          {
+            name: '🌐 `/soundboard-web`',
+            value: 'Muestra el enlace directo al **Soundboard Studio Web**, un panel visual con drag & drop y vista previa de botones en vivo.'
           },
           {
             name: '🎲 `/ruleta [castigo: mute | susto]`',
@@ -174,9 +194,9 @@ function getHelpData(client, category = 'overview', user = null) {
           {
             name: '📚 Categorías Disponibles',
             value:
-              '• 🎵 **Comandos de Música**: `/play`, `/dj`, `/ambient`, `/search`, `/lyrics`, `/pause`, `/resume`, `/skip`, `/stop`\n' +
+              '• 🎵 **Música & Locución**: `/play`, `/tts`, `/voice`, `/dj`, `/ambient`, `/search`, `/lyrics`, `/pause`, `/resume`, `/skip`, `/stop`\n' +
               '• 📜 **Gestión de Cola**: `/queue`, `/shuffle`\n' +
-              '• 🔊 **Soundboard & Memes**: `/soundboard` (Botonera interactiva de efectos en llamada)\n' +
+              '• 🔊 **Soundboard Studio**: `/soundboard`, `/soundboard-add`, `/soundboard-remove`, `/soundboard-web`\n' +
               '• 🎲 **Dinámicas & Minijuegos**: `/ruleta` (Ruleta Rusa de voz)\n' +
               '• 🎛️ **Controles Interactivos**: Guía de la botonera del reproductor\n' +
               '• ℹ️ **Información & Estado**: Ping, tiempo activo y estadísticas'

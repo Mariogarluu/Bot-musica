@@ -1,6 +1,17 @@
 // index.js
 require('dotenv').config();
-const { Client, GatewayIntentBits, Collection, EmbedBuilder, ActivityType } = require('discord.js');
+const {
+  Client,
+  GatewayIntentBits,
+  Collection,
+  EmbedBuilder,
+  ActivityType,
+  ModalBuilder,
+  TextInputBuilder,
+  TextInputStyle,
+  ActionRowBuilder,
+  ButtonBuilder,
+} = require('discord.js');
 const {
   pausePlayer,
   resumePlayer,
@@ -16,6 +27,7 @@ const {
   stopSoundEffect,
 } = require('./player');
 const { getSoundEffect } = require('./utils/soundEffects');
+const { handleSoundboardWebRequest } = require('./utils/soundboardWeb');
 const { getReproductorEmbed } = require('./utils/reproductorEmbed');
 const { sendOrUpdateReproductor } = require('./utils/reproductorMessage');
 const { getQueueEmbed } = require('./utils/queueEmbed');
@@ -24,13 +36,20 @@ const fs = require('fs');
 const http = require('http');
 const yts = require('yt-search');
 
-// Servidor HTTP de soporte
+// Servidor HTTP de soporte & Soundboard Studio Web
 const PORT = process.env.PORT || 3000;
-http.createServer((req, res) => {
+http.createServer(async (req, res) => {
+  try {
+    const handled = await handleSoundboardWebRequest(req, res);
+    if (handled) return;
+  } catch (err) {
+    console.error('Error en servidor HTTP soundboard:', err);
+  }
+
   res.writeHead(200, { 'Content-Type': 'text/plain; charset=utf-8' });
-  res.end('🎵 Bot de música Discord activo 24/7');
+  res.end('🎵 Bot de música Discord activo 24/7 | Soundboard Studio disponible en /soundboard');
 }).listen(PORT, () => {
-  console.log(`🌐 Servidor HTTP activo en el puerto ${PORT}`);
+  console.log(`🌐 Servidor HTTP activo en el puerto ${PORT} (Soundboard Studio: http://localhost:${PORT}/soundboard)`);
 });
 
 const client = new Client({
@@ -147,6 +166,40 @@ client.on('interactionCreate', async interaction => {
       const { handleAmbientSelect } = require('./commands/ambient');
       return handleAmbientSelect(interaction);
     }
+
+    // 4. Selector de voces neuronales de /voice
+    if (interaction.customId === 'voice_select') {
+      if (interaction.deferred || interaction.replied) return;
+      const { handleVoiceSelect } = require('./commands/voice');
+      const selectedVoiceId = interaction.values[0];
+      return handleVoiceSelect(interaction, selectedVoiceId, true);
+    }
+
+    // 5. Selector de borrado de sonidos de /soundboard-remove
+    if (interaction.customId === 'soundboard_delete_select') {
+      const soundId = interaction.values[0];
+      const { removeCustomSound, getSoundEffect } = require('./utils/soundEffects');
+      const sound = getSoundEffect(soundId);
+      const name = sound ? `${sound.emoji || '🔊'} ${sound.name}` : soundId;
+      const removed = removeCustomSound(soundId);
+
+      if (removed) {
+        return interaction.update({
+          embeds: [
+            new EmbedBuilder()
+              .setColor(0x23A55A)
+              .setTitle('✅ Sonido Eliminado')
+              .setDescription(`El sonido **${name}** ha sido eliminado permanentemente del soundboard.`)
+          ],
+          components: []
+        });
+      } else {
+        return interaction.update({
+          content: '❌ No se pudo encontrar o eliminar el sonido especificado.',
+          components: []
+        });
+      }
+    }
   }
 
   // -------------------- BOTONES INTERACTIVOS --------------------
@@ -158,6 +211,67 @@ client.on('interactionCreate', async interaction => {
     const queue = getQueue(guildId);
 
     // -------------------- BOTONES DEL SOUNDBOARD --------------------
+    // 1. Abrir modal visual para añadir sonido
+    if (interaction.customId === 'soundboard_open_modal') {
+      const modal = new ModalBuilder()
+        .setCustomId('soundboard_add_modal')
+        .setTitle('➕ Añadir Sonido al Soundboard');
+
+      const nameInput = new TextInputBuilder()
+        .setCustomId('modal_sound_name')
+        .setLabel('Nombre del sonido (máx. 25 letras)')
+        .setStyle(TextInputStyle.Short)
+        .setPlaceholder('Ej: Bazinga, Taco Bell, GigaChad')
+        .setMinLength(2)
+        .setMaxLength(25)
+        .setRequired(true);
+
+      const emojiInput = new TextInputBuilder()
+        .setCustomId('modal_sound_emoji')
+        .setLabel('Emoji para el botón')
+        .setStyle(TextInputStyle.Short)
+        .setPlaceholder('Ej: 🔔, 🗿, 💥, 🎉 (opcional, por defecto: 🔊)')
+        .setMaxLength(8)
+        .setRequired(false);
+
+      const urlInput = new TextInputBuilder()
+        .setCustomId('modal_sound_url')
+        .setLabel('URL directa del audio (mp3 / ogg / wav)')
+        .setStyle(TextInputStyle.Short)
+        .setPlaceholder('https://ejemplo.com/sonido.mp3')
+        .setRequired(true);
+
+      const colorInput = new TextInputBuilder()
+        .setCustomId('modal_sound_color')
+        .setLabel('Color: azul (1), gris (2), verde (3), rojo (4)')
+        .setStyle(TextInputStyle.Short)
+        .setPlaceholder('azul, rojo, verde o gris (por defecto: azul)')
+        .setMaxLength(10)
+        .setRequired(false);
+
+      modal.addComponents(
+        new ActionRowBuilder().addComponents(nameInput),
+        new ActionRowBuilder().addComponents(emojiInput),
+        new ActionRowBuilder().addComponents(urlInput),
+        new ActionRowBuilder().addComponents(colorInput)
+      );
+
+      return interaction.showModal(modal);
+    }
+
+    // 2. Paginación del Soundboard
+    if (interaction.customId.startsWith('soundboard_page_')) {
+      const pageStr = interaction.customId.replace('soundboard_page_', '');
+      const targetPage = parseInt(pageStr, 10);
+      if (!isNaN(targetPage)) {
+        const { getSoundboardPanel } = require('./commands/soundboard');
+        const payload = getSoundboardPanel(targetPage, client.user);
+        return interaction.update(payload);
+      }
+      return interaction.deferUpdate().catch(() => {});
+    }
+
+    // 3. Botones de reproducción de efectos del Soundboard
     if (interaction.customId.startsWith('soundboard_')) {
       const voiceChannel = interaction.member?.voice?.channel;
       if (!voiceChannel) {
@@ -168,7 +282,6 @@ client.on('interactionCreate', async interaction => {
         return interaction.reply({ embeds: [errorEmbed], ephemeral: true });
       }
 
-      // Requisito 3: Responder con deferUpdate() para que los usuarios puedan spamear botones sin errores
       await interaction.deferUpdate().catch(() => {});
 
       if (interaction.customId === 'soundboard_stop') {
@@ -309,6 +422,59 @@ client.on('interactionCreate', async interaction => {
       }
     }
     return;
+  }
+
+  // -------------------- ENVÍO DE FORMULARIOS MODAL --------------------
+  if (interaction.isModalSubmit()) {
+    if (interaction.customId === 'soundboard_add_modal') {
+      const name = interaction.fields.getTextInputValue('modal_sound_name').trim();
+      const emoji = interaction.fields.getTextInputValue('modal_sound_emoji').trim() || '🔊';
+      const url = interaction.fields.getTextInputValue('modal_sound_url').trim();
+      const colorText = interaction.fields.getTextInputValue('modal_sound_color').trim() || 'azul';
+
+      await interaction.deferReply({ ephemeral: true });
+
+      try {
+        const { addCustomSound, normalizeButtonStyle } = require('./utils/soundEffects');
+        const style = normalizeButtonStyle(colorText);
+
+        const sound = await addCustomSound({
+          name,
+          shortName: name.slice(0, 20),
+          emoji,
+          style,
+          url,
+          description: `Añadido por ${interaction.user.username} vía Modal Discord`
+        });
+
+        const confirmEmbed = new EmbedBuilder()
+          .setColor(0x23A55A)
+          .setTitle('🎉 ¡Sonido Añadido al Soundboard!')
+          .setDescription(`El botón **${sound.emoji} ${sound.name}** se ha creado con éxito y ya aparece en la botonera de llamadas.`)
+          .addFields(
+            { name: '🔘 Botón', value: `\`${sound.emoji} ${sound.shortName}\``, inline: true },
+            { name: '🎨 Color', value: style === 4 ? 'Rojo' : (style === 3 ? 'Verde' : (style === 2 ? 'Gris' : 'Azul')), inline: true }
+          )
+          .setFooter({ text: 'Pulsa el botón de abajo para probar tu nuevo sonido en llamada' });
+
+        const previewRow = new ActionRowBuilder().addComponents(
+          new ButtonBuilder()
+            .setCustomId(`soundboard_${sound.id}`)
+            .setLabel(sound.shortName)
+            .setEmoji(sound.emoji)
+            .setStyle(sound.style)
+        );
+
+        return interaction.editReply({
+          embeds: [confirmEmbed],
+          components: [previewRow]
+        });
+      } catch (err) {
+        return interaction.editReply({
+          content: `❌ No se pudo guardar el sonido: ${err.message}`
+        });
+      }
+    }
   }
 
   // -------------------- COMANDOS SLASH --------------------
