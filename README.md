@@ -1,17 +1,17 @@
 # 🎵 Bot-musica
 
-Bot de música para Discord que permite reproducir canciones de YouTube en canales de voz. Desarrollado con Discord.js v14 y @discordjs/voice.
+Bot de música profesional para Discord con reproductor interactivo en tiempo real, menús desplegables, miniaturas de alta calidad y gestión avanzada de cola. Desarrollado con Discord.js v14 y @discordjs/voice.
 
-## ✨ Características
+## ✨ Características y Visualización
 
-- 🎵 Reproducción de música desde YouTube por URL
-- 🔎 Búsqueda de canciones en YouTube
-- 📃 Sistema de cola de reproducción
-- ⏸️ Pausar música
-- ▶️ Reanudar reproducción
-- ⏭️ Saltar canciones
-- ⏹️ Detener reproducción y limpiar cola
-- 🎨 Embeds bonitos con información de las canciones
+- 🎛️ **Reproductor Interactivo en Tiempo Real**: Tarjeta visual con carátula de YouTube, duración, canal/artista, usuario que la solicitó y estado de la cola.
+- 🔁 **Modo Bucle (Loop)**: Repetición continua de tu canción favorita con un solo clic.
+- ⏯️ **Botonera Inteligente**: Botón dinámico `Play/Pausa`, `Saltar`, `Bucle`, `Mezclar`, `Parar` y `Ver Cola` sin necesidad de escribir comandos.
+- 📖 **Comando `/help` Interactivo**: Panel de ayuda completo con menú desplegable por categorías (Música, Cola, Controles interactivos y Estado del sistema).
+- 🔎 **Búsqueda Avanzada con `/search`**: Menú desplegable interactivo (`StringSelectMenu`) para elegir visualmente qué pista escuchar.
+- 📃 **Cola Paginada con `/queue`**: Visualización de la pista actual, canciones siguientes, duración total estimada y botones de cambio de página `[◀️]` `[▶️]`.
+- 🎵 **Búsqueda Directa en `/play`**: Acepta tanto URLs directas de YouTube como nombres o palabras clave (ej: `/play despacito`).
+- 🟢 **Presencia Dinámica**: Muestra actividad en rotación en Discord indicando `/help`, `/play` y el número de servidores conectados.
 
 ## 📋 Requisitos Previos
 
@@ -73,11 +73,11 @@ Bot de música para Discord que permite reproducir canciones de YouTube en canal
      - ✅ `applications.commands`
    - Selecciona los permisos:
      - ✅ Send Messages
+     - ✅ Embed Links
      - ✅ Connect
      - ✅ Speak
      - ✅ Use Voice Activity
-   - Copia la URL generada y ábrela en tu navegador
-   - Selecciona tu servidor y autoriza el bot
+   - Copia la URL generada y ábrela en tu navegador para autorizarlo en tu servidor.
 
 6. **Obtén el Guild ID**
    - En Discord, activa el Modo Desarrollador (Ajustes → Avanzado → Modo Desarrollador)
@@ -100,123 +100,62 @@ Bot de música para Discord que permite reproducir canciones de YouTube en canal
    
    Deberías ver:
    ```
-   Bot is online!
-   Logged in as TuBot#1234!
+   ✅ Conectado como TuBot#1234!
+   🚀 Bot de música iniciado y listo.
    ```
 
 ## 📝 Comandos Disponibles
 
-| Comando | Descripción | Uso |
-|---------|-------------|-----|
-| `/play` | Reproduce una canción de YouTube por URL | `/play song:https://youtube.com/watch?v=...` |
-| `/search` | Busca canciones en YouTube | `/search query:nombre de la canción` |
-| `/queue` | Muestra la cola de canciones | `/queue` |
-| `/pause` | Pausa la canción actual | `/pause` |
-| `/resume` | Continúa la música pausada | `/resume` |
-| `/skip` | Salta la canción actual | `/skip` |
-| `/stop` | Detiene la música y limpia la cola | `/stop` |
+| Comando | Descripción | Ejemplo de Uso |
+|---------|-------------|----------------|
+| `/help` | Panel interactivo de ayuda con menú desplegable de categorías | `/help` o `/help categoria:🎵 Comandos de Música` |
+| `/play` | Reproduce una canción por URL o por búsqueda de texto | `/play song:Bohemian Rhapsody` o `/play song:https://...` |
+| `/search`| Busca en YouTube y muestra un menú desplegable interactivo | `/search query:Imagine Dragons` |
+| `/queue`| Muestra la cola con paginación interactiva `[◀️] [▶️]` | `/queue` |
+| `/pause`| Pausa la canción actual | `/pause` |
+| `/resume`| Reanuda la reproducción pausada | `/resume` |
+| `/skip` | Salta la canción actual a la siguiente | `/skip` |
+| `/shuffle`| Mezcla aleatoriamente las canciones en espera de la cola | `/shuffle` |
+| `/stop` | Detiene la música, vacía la cola y sale del canal | `/stop` |
 
-## 💡 Ejemplos de Uso
+## 🎛️ Controles del Reproductor Interactivo
 
-1. **Reproducir una canción por URL**
-   ```
-   /play song:https://www.youtube.com/watch?v=dQw4w9WgXcQ
-   ```
+Cada vez que suena una canción, el bot despliega una tarjeta con los siguientes botones:
 
-2. **Buscar una canción**
-   ```
-   /search query:despacito
-   ```
-   El bot te mostrará los 5 primeros resultados. Luego usa `/play` con la URL del video que quieras.
-
-3. **Ver la cola**
-   ```
-   /queue
-   ```
-
-4. **Controlar la reproducción**
-   ```
-   /pause    # Pausar
-   /resume   # Reanudar
-   /skip     # Saltar canción
-   /stop     # Detener todo
-   ```
+- **⏸️ / ▶️ Play/Pausa**: Alterna el estado de reproducción instantáneamente.
+- **⏭️ Saltar**: Pasa inmediatamente a la siguiente pista.
+- **🔁 Bucle**: Activa/desactiva la repetición continua de la canción actual.
+- **🔀 Mezclar**: Reordena al azar las canciones en espera.
+- **⏹️ Parar**: Apaga la música y desconecta el bot.
+- **📋 Ver Cola**: Abre una ventana privada para ver el orden de espera sin saturar el canal.
+- **❓ Ayuda & Opciones**: Abre el panel de ayuda y configuración.
 
 ## 🛠️ Estructura del Proyecto
 
 ```
 Bot-musica/
-├── commands/          # Comandos slash del bot
-│   ├── play.js       # Reproducir música
-│   ├── search.js     # Buscar canciones
-│   ├── queue.js      # Ver cola
-│   ├── pause.js      # Pausar
-│   ├── resume.js     # Reanudar
-│   ├── skip.js       # Saltar
-│   └── stop.js       # Detener
-├── index.js          # Archivo principal del bot
-├── player.js         # Lógica del reproductor de música
-├── deploy-commands.js # Script para registrar comandos
-├── package.json      # Dependencias
-└── .env             # Variables de entorno (no incluido)
+├── commands/               # Comandos slash del bot
+│   ├── help.js            # Guía interactiva de opciones y comandos
+│   ├── play.js            # Reproducción inteligente (URL / Búsqueda)
+│   ├── search.js          # Búsqueda con Select Menu interactivo
+│   ├── queue.js           # Cola con paginación
+│   ├── pause.js           # Pausa con embed estilizado
+│   ├── resume.js          # Reanudar con embed estilizado
+│   ├── skip.js            # Saltar canción
+│   ├── shuffle.js         # Mezclar cola
+│   └── stop.js            # Detener y limpiar
+├── utils/
+│   ├── helpEmbed.js       # Generador de embeds y menús de ayuda
+│   ├── queueEmbed.js      # Generador de cola interactiva y paginada
+│   ├── reproductorEmbed.js # Tarjeta visual del reproductor y botones
+│   └── reproductorMessage.js # Gestor de actualización in-place de mensajes
+├── index.js               # Punto de entrada, presencia y gestor de eventos
+├── player.js              # Lógica de audio, cola, loops y streams
+├── deploy-commands.js      # Registro de comandos slash en Discord
+├── package.json           # Dependencias y configuración
+└── .env                  # Variables de entorno (no incluido)
 ```
-
-## 🔍 Solución de Problemas
-
-### El bot no responde a los comandos
-- Verifica que hayas ejecutado `node deploy-commands.js`
-- Asegúrate de que el bot esté en línea (`node index.js`)
-- Comprueba que el bot tenga los permisos necesarios en el servidor
-
-### Error: "Debes unirte primero a un canal de voz"
-- Únete a un canal de voz antes de usar `/play`
-
-### Error al reproducir música
-- Verifica que la URL sea de YouTube
-- Asegúrate de que el video no sea privado o restringido por edad
-- Comprueba tu conexión a internet
-
-### El bot se desconecta del canal de voz
-- Esto puede ser normal después de reproducir todas las canciones
-- Usa `/play` para que vuelva a conectarse
-
-### Error: "Cannot find module"
-- Ejecuta `npm install` para instalar todas las dependencias
-
-## 📦 Dependencias
-
-- **discord.js** (^14.21.0) - Librería principal para Discord
-- **@discordjs/voice** (^0.18.0) - Manejo de audio en Discord
-- **@distube/ytdl-core** (^4.16.12) - Descargar audio de YouTube
-- **yt-search** (^2.13.1) - Buscar videos en YouTube
-- **dotenv** (^16.5.0) - Cargar variables de entorno
-- **ffmpeg-static** (^5.2.0) - FFmpeg para procesamiento de audio
-
-## 📄 Licencia
-
-ISC
-
-## 🤝 Contribuciones
-
-Las contribuciones son bienvenidas. Si encuentras algún bug o tienes alguna sugerencia:
-
-1. Haz un fork del proyecto
-2. Crea una rama para tu feature (`git checkout -b feature/AmazingFeature`)
-3. Commit tus cambios (`git commit -m 'Add some AmazingFeature'`)
-4. Push a la rama (`git push origin feature/AmazingFeature`)
-5. Abre un Pull Request
-
-## ⚠️ Advertencias
-
-- Este bot está diseñado para uso personal y educativo
-- Respeta los términos de servicio de YouTube
-- No uses el bot para infringir derechos de autor
-- El archivo `.env` nunca debe compartirse públicamente
 
 ## 👨‍💻 Autor
 
 Mariogarluu
-
----
-
-¿Necesitas ayuda? Abre un [issue](https://github.com/Mariogarluu/Bot-musica/issues) en GitHub.

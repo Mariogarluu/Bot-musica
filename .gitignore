@@ -1,2 +1,4 @@
 # NO SUBIR .env A GITHUB
 .env
+node_modules/
+Bot-Musica.zip

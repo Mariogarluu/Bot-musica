@@ -1,16 +1,35 @@
-const { SlashCommandBuilder } = require('discord.js');
-const { skipSong } = require('../player');
+// commands/skip.js
+const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
+const { skipSong, getQueue } = require('../player');
 
 module.exports = {
   data: new SlashCommandBuilder()
     .setName('skip')
-    .setDescription('⏭️ Salta la canción actual'),
+    .setDescription('⏭️ Salta la canción actual y pasa a la siguiente'),
+
   async execute(interaction) {
+    const queue = getQueue(interaction.guildId);
+    if (!queue || queue.length === 0) {
+      const errEmbed = new EmbedBuilder()
+        .setColor(0xEF4444)
+        .setDescription('❌ No hay ninguna canción reproduciéndose para saltar.');
+      return interaction.reply({ embeds: [errEmbed], ephemeral: true });
+    }
+
+    const currentTitle = queue[0].title;
     const result = await skipSong(interaction);
+
     if (result) {
-      await interaction.reply('⏭️ Canción saltada.');
+      const successEmbed = new EmbedBuilder()
+        .setColor(0x3B82F6)
+        .setTitle('⏭️ Canción Saltada')
+        .setDescription(`Se ha saltado: **${currentTitle}**\nCargando la siguiente pista...`);
+      await interaction.reply({ embeds: [successEmbed] });
     } else {
-      await interaction.reply({ content: '❌ No se puede saltar.', ephemeral: true });
+      const failEmbed = new EmbedBuilder()
+        .setColor(0xEF4444)
+        .setDescription('❌ No se pudo saltar la canción.');
+      await interaction.reply({ embeds: [failEmbed], ephemeral: true });
     }
   }
 };
