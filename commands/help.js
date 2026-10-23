@@ -14,6 +14,7 @@ module.exports = {
           { name: '🏠 Visión General', value: 'overview' },
           { name: '🎵 Comandos de Música', value: 'music' },
           { name: '📜 Gestión de Cola', value: 'queue' },
+          { name: '🎲 Dinámicas & Minijuegos', value: 'games' },
           { name: '🎛️ Controles Interactivos', value: 'buttons' },
           { name: 'ℹ️ Información del Sistema', value: 'info' }
         )

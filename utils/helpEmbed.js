@@ -20,6 +20,10 @@ function getHelpData(client, category = 'overview', user = null) {
             value: 'Busca los mejores resultados en YouTube y despliega un **menú interactivo** con duración, autor y miniaturas para elegir qué pista reproducir.'
           },
           {
+            name: '📜 `/lyrics [cancion]`',
+            value: 'Muestra la letra de la canción en reproducción actual o de la que especifiques con paginación interactiva y carátula.'
+          },
+          {
             name: '⏸️ `/pause`',
             value: 'Pausa momentáneamente la canción en reproducción sin perder la posición actual.'
           },
@@ -30,6 +34,18 @@ function getHelpData(client, category = 'overview', user = null) {
           {
             name: '⏭️ `/skip`',
             value: 'Salta inmediatamente a la siguiente pista de la cola.'
+          },
+          {
+            name: '🎛️ `/filter <tipo>`',
+            value: 'Aplica filtros de audio en tiempo real con FFmpeg: **nightcore**, **vaporwave**, **bassboost**, **8d**, **radio** o **off** para desactivar.'
+          },
+          {
+            name: '🌿 `/ambient`',
+            value: 'Abre el menú interactivo de **sonidos relajantes en bucle** (lluvia, chimenea, cafetería, olas, bosque, ruido blanco) ideal para estudiar o descansar en modo focus.'
+          },
+          {
+            name: '🎙️ `/dj [estado]`',
+            value: 'Activa o desactiva el **Modo Locutor DJ** (TTS en español). El bot presenta cada canción antes de reproducirse con estilo de radio.'
           },
           {
             name: '⏹️ `/stop`',
@@ -55,6 +71,24 @@ function getHelpData(client, category = 'overview', user = null) {
           }
         )
         .setFooter({ text: 'Puedes pulsar el botón "📋 Ver Cola" en el reproductor en cualquier momento.' });
+      break;
+
+    case 'games':
+      embed
+        .setColor(0xEF4444)
+        .setTitle('🎲 Dinámicas de Servidor, Minijuegos & Soundboard')
+        .setDescription('Herramientas interactivas y efectos divertidos diseñados para canales de voz:')
+        .addFields(
+          {
+            name: '🔊 `/soundboard`',
+            value: 'Despliega la **botonera interactiva de memes y efectos de sonido** (`Bocina de meme`, `Ba-dum tss`, `Aplausos`, `Grillos`, `Bruh`, `Sad Violin / Fail` y más). Pausa momentáneamente la música si está sonando y la reanuda de forma automática tras terminar el clip.'
+          },
+          {
+            name: '🎲 `/ruleta [castigo: mute | susto]`',
+            value: 'Inicia la **Ruleta Rusa de voz**. El tambor gira, apunta a los miembros presentes en la llamada y, si sale la bala (1 de 6 probabilidades), la víctima es silenciada durante **20 segundos** o asustada según el modo elegido.\n*Dispone de modo solitario para pruebas y detección inteligente de permisos de moderación.*'
+          }
+        )
+        .setFooter({ text: 'Requiere estar en un canal de voz para poder participar.' });
       break;
 
     case 'buttons':
@@ -140,8 +174,10 @@ function getHelpData(client, category = 'overview', user = null) {
           {
             name: '📚 Categorías Disponibles',
             value:
-              '• 🎵 **Comandos de Música**: `/play`, `/search`, `/pause`, `/resume`, `/skip`, `/stop`\n' +
+              '• 🎵 **Comandos de Música**: `/play`, `/dj`, `/ambient`, `/search`, `/lyrics`, `/pause`, `/resume`, `/skip`, `/stop`\n' +
               '• 📜 **Gestión de Cola**: `/queue`, `/shuffle`\n' +
+              '• 🔊 **Soundboard & Memes**: `/soundboard` (Botonera interactiva de efectos en llamada)\n' +
+              '• 🎲 **Dinámicas & Minijuegos**: `/ruleta` (Ruleta Rusa de voz)\n' +
               '• 🎛️ **Controles Interactivos**: Guía de la botonera del reproductor\n' +
               '• ℹ️ **Información & Estado**: Ping, tiempo activo y estadísticas'
           }
@@ -178,6 +214,13 @@ function getHelpData(client, category = 'overview', user = null) {
         value: 'queue',
         emoji: '📜',
         default: category === 'queue'
+      },
+      {
+        label: 'Dinámicas & Minijuegos',
+        description: 'Ruleta Rusa de voz y juegos de comunidad',
+        value: 'games',
+        emoji: '🎲',
+        default: category === 'games'
       },
       {
         label: 'Controles Interactivos',

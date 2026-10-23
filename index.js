@@ -11,8 +11,11 @@ const {
   setQueue,
   addToQueue,
   getLoop,
-  toggleLoop
+  toggleLoop,
+  playSoundEffect,
+  stopSoundEffect,
 } = require('./player');
+const { getSoundEffect } = require('./utils/soundEffects');
 const { getReproductorEmbed } = require('./utils/reproductorEmbed');
 const { sendOrUpdateReproductor } = require('./utils/reproductorMessage');
 const { getQueueEmbed } = require('./utils/queueEmbed');
@@ -137,12 +140,49 @@ client.on('interactionCreate', async interaction => {
       const { embed, components } = getHelpData(client, category, interaction.user);
       return interaction.update({ embeds: [embed], components });
     }
+
+    // 3. Selector de presets de /ambient (Focus Mode)
+    if (interaction.customId === 'ambient_select') {
+      if (interaction.deferred || interaction.replied) return;
+      const { handleAmbientSelect } = require('./commands/ambient');
+      return handleAmbientSelect(interaction);
+    }
   }
 
   // -------------------- BOTONES INTERACTIVOS --------------------
   if (interaction.isButton()) {
+    // Ignorar botones gestionados por collectors locales en comandos (ej. /lyrics)
+    if (interaction.customId.startsWith('lyrics_')) return;
+
     const guildId = interaction.guildId;
     const queue = getQueue(guildId);
+
+    // -------------------- BOTONES DEL SOUNDBOARD --------------------
+    if (interaction.customId.startsWith('soundboard_')) {
+      const voiceChannel = interaction.member?.voice?.channel;
+      if (!voiceChannel) {
+        const errorEmbed = new EmbedBuilder()
+          .setColor(0xEF4444)
+          .setTitle('🚫 Canal de Voz Requerido')
+          .setDescription('Debes unirte a un canal de voz para reproducir efectos de sonido.');
+        return interaction.reply({ embeds: [errorEmbed], ephemeral: true });
+      }
+
+      // Requisito 3: Responder con deferUpdate() para que los usuarios puedan spamear botones sin errores
+      await interaction.deferUpdate().catch(() => {});
+
+      if (interaction.customId === 'soundboard_stop') {
+        stopSoundEffect(guildId);
+        return;
+      }
+
+      const soundId = interaction.customId.replace('soundboard_', '');
+      const sound = getSoundEffect(soundId);
+      if (sound) {
+        await playSoundEffect(guildId, voiceChannel, sound);
+      }
+      return;
+    }
 
     // Paginación de la cola
     if (interaction.customId.startsWith('queue_page_')) {
@@ -164,6 +204,13 @@ client.on('interactionCreate', async interaction => {
     if (interaction.customId === 'help') {
       const { embed, components } = getHelpData(client, 'overview', interaction.user);
       return interaction.reply({ embeds: [embed], components, ephemeral: true });
+    }
+
+    // Botón de parada rápida de /ambient
+    if (interaction.customId === 'ambient_stop') {
+      if (interaction.deferred || interaction.replied) return;
+      const { handleAmbientStop } = require('./commands/ambient');
+      return handleAmbientStop(interaction);
     }
 
     // Botón de play individual desde /search (compatibilidad)

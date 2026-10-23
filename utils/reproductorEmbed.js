@@ -6,6 +6,7 @@ function getReproductorEmbed(currentSong, interaction, queue = [], options = {})
   const guildId = interaction.guildId;
   const paused = options.isPaused !== undefined ? options.isPaused : (player.isPaused ? player.isPaused(guildId) : false);
   const loopActive = options.isLoop !== undefined ? options.isLoop : (player.getLoop ? player.getLoop(guildId) : false);
+  const activeFilter = options.filter !== undefined ? options.filter : (player.getFilter ? player.getFilter(guildId) : 'off');
 
   const siguiente = queue && queue.length > 1 ? queue[1] : null;
 
@@ -82,8 +83,11 @@ function getReproductorEmbed(currentSong, interaction, queue = [], options = {})
 
   // Pie y fecha
   const queueCount = queue.length;
+  const djActive = options.isDj !== undefined ? options.isDj : (player.getDjMode ? player.getDjMode(guildId) : false);
+  const djText = djActive ? ' • DJ: 🎙️ ON' : '';
+  const filterText = activeFilter && activeFilter !== 'off' && activeFilter !== 'clear' ? ` • Filtro: ${activeFilter}` : '';
   embed.setFooter({
-    text: `Cola: ${queueCount} pista${queueCount === 1 ? '' : 's'} • Bucle: ${loopActive ? 'Activado' : 'Desactivado'} • /help para ver opciones`,
+    text: `Cola: ${queueCount} pista${queueCount === 1 ? '' : 's'} • Bucle: ${loopActive ? 'Activado' : 'Desactivado'}${djText}${filterText} • /help para ver opciones`,
     iconURL: requesterAvatar || undefined
   });
   embed.setTimestamp();
