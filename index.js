@@ -21,13 +21,13 @@ const fs = require('fs');
 const http = require('http');
 const yts = require('yt-search');
 
-// Servidor HTTP para Render (evita que el servicio se considere inactivo o falle el port check)
+// Servidor HTTP de soporte
 const PORT = process.env.PORT || 3000;
 http.createServer((req, res) => {
   res.writeHead(200, { 'Content-Type': 'text/plain; charset=utf-8' });
   res.end('🎵 Bot de música Discord activo 24/7');
 }).listen(PORT, () => {
-  console.log(`🌐 Servidor HTTP para Render activo en el puerto ${PORT}`);
+  console.log(`🌐 Servidor HTTP activo en el puerto ${PORT}`);
 });
 
 const client = new Client({

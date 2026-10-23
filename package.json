@@ -4,9 +4,13 @@
   "description": "Bot de música para Discord",
   "main": "index.js",
   "scripts": {
-    "start": "node index.js",
+    "start": "node --max-old-space-size=300 index.js",
     "deploy": "node deploy-commands.js",
     "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "allowScripts": {
+    "@discordjs/opus": true,
+    "ffmpeg-static": true
   },
   "keywords": [],
   "author": "",
@@ -19,7 +23,6 @@
     "discord.js": "^14.21.0",
     "dotenv": "^16.5.0",
     "ffmpeg-static": "^5.2.0",
-    "googleapis": "^150.0.1",
     "libsodium-wrappers": "^0.8.4",
     "play-dl": "^1.9.7",
     "spotify-url-info": "^3.3.3",
